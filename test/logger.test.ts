@@ -43,6 +43,15 @@ describe('logger', () => {
     expect(parsed.data).toBe('[Redacted]');
   });
 
+  it('redacts req.headers.authorization (nested req object)', () => {
+    const { stream, lines } = captureStream();
+    const log = createLogger({ level: 'info' }, stream);
+    log.info({ req: { headers: { authorization: 'Bearer secret' } } }, 'r');
+
+    const parsed = JSON.parse(lines()[0]!);
+    expect(parsed.req.headers.authorization).toBe('[Redacted]');
+  });
+
   it('respects log level filtering', () => {
     const { stream, lines } = captureStream();
     const log = createLogger({ level: 'warn' }, stream);

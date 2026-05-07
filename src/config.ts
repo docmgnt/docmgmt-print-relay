@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isValidCidr } from './ssrf';
 
 export class ConfigError extends Error {
   constructor(message: string) {
@@ -9,14 +10,33 @@ export class ConfigError extends Error {
 
 const LOG_LEVELS = ['trace', 'debug', 'info', 'warn', 'error', 'fatal'] as const;
 
+const allowedPrinterCidrsSchema = z
+  .string()
+  .default('10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,169.254.0.0/16')
+  .transform((s) => s.split(',').map((c) => c.trim()).filter(Boolean))
+  .superRefine((cidrs, ctx) => {
+    if (cidrs.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'must contain at least one CIDR',
+      });
+      return;
+    }
+    for (const cidr of cidrs) {
+      if (!isValidCidr(cidr)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `invalid CIDR "${cidr}"`,
+        });
+      }
+    }
+  });
+
 const ConfigSchema = z.object({
   apiKey: z.string().min(1, 'API_KEY is required'),
   port: z.coerce.number().int().min(1).max(65535).default(3010),
   logLevel: z.enum(LOG_LEVELS).default('info'),
-  allowedPrinterCidrs: z
-    .string()
-    .default('10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,169.254.0.0/16')
-    .transform((s) => s.split(',').map((c) => c.trim()).filter(Boolean)),
+  allowedPrinterCidrs: allowedPrinterCidrsSchema,
   tcpConnectTimeoutMs: z.coerce.number().int().positive().default(5000),
   tcpWriteTimeoutMs: z.coerce.number().int().positive().default(10000),
   ippTimeoutMs: z.coerce.number().int().positive().default(15000),

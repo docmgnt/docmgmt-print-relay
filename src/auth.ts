@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { timingSafeEqual } from 'node:crypto';
+import type { Logger } from 'pino';
 
 const HEALTH_PATH = '/api/health';
 
@@ -14,16 +15,24 @@ function safeEqual(a: string, b: string): boolean {
   return timingSafeEqual(ab, bb);
 }
 
-export function createAuthMiddleware(apiKey: string) {
+function logRejection(logger: Logger | undefined, req: Request, reason: string): void {
+  if (!logger) return;
+  const xff = req.headers['x-forwarded-for'];
+  logger.warn({ ip: req.ip, xff, path: req.path, reason }, 'auth-rejection');
+}
+
+export function createAuthMiddleware(apiKey: string, logger?: Logger) {
   return function authMiddleware(req: Request, res: Response, next: NextFunction) {
     if (req.path === HEALTH_PATH) return next();
 
     const header = req.headers.authorization ?? '';
     const [scheme, token] = header.split(' ', 2);
     if (scheme !== 'Bearer' || !token) {
+      logRejection(logger, req, 'missing-or-malformed-authorization');
       return res.status(401).json({ success: false, error: 'unauthorized' });
     }
     if (!safeEqual(token, apiKey)) {
+      logRejection(logger, req, 'token-mismatch');
       return res.status(401).json({ success: false, error: 'unauthorized' });
     }
     return next();

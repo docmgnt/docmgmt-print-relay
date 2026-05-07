@@ -1,14 +1,27 @@
 import { describe, it, expect } from 'vitest';
 import express from 'express';
 import request from 'supertest';
+import { Writable } from 'node:stream';
 import { createAuthMiddleware } from '../src/auth';
+import { createLogger, type Logger } from '../src/logger';
 
-function makeApp(apiKey: string) {
+function makeApp(apiKey: string, logger?: Logger) {
   const app = express();
   app.get('/api/health', (_req, res) => res.json({ ok: true }));
-  app.use(createAuthMiddleware(apiKey));
+  app.use(createAuthMiddleware(apiKey, logger));
   app.get('/protected', (_req, res) => res.json({ ok: true }));
   return app;
+}
+
+function captureStream(): { stream: Writable; lines: () => string[] } {
+  const chunks: string[] = [];
+  const stream = new Writable({
+    write(chunk, _enc, cb) {
+      chunks.push(chunk.toString());
+      cb();
+    },
+  });
+  return { stream, lines: () => chunks.join('').split('\n').filter(Boolean) };
 }
 
 describe('createAuthMiddleware', () => {
@@ -50,5 +63,31 @@ describe('createAuthMiddleware', () => {
       .get('/protected')
       .set('authorization', 'Bearer s');
     expect(res.status).toBe(401);
+  });
+
+  it('logs auth-rejection with x-forwarded-for chain on 401', async () => {
+    const { stream, lines } = captureStream();
+    const log = createLogger({ level: 'warn' }, stream);
+    await request(makeApp('secret', log))
+      .get('/protected')
+      .set('authorization', 'Bearer wrong')
+      .set('x-forwarded-for', '203.0.113.5, 198.51.100.1');
+
+    const entries = lines().map((l) => JSON.parse(l));
+    const rejection = entries.find((e) => e.msg === 'auth-rejection');
+    expect(rejection).toBeDefined();
+    expect(rejection.xff).toBe('203.0.113.5, 198.51.100.1');
+    expect(rejection.reason).toBe('token-mismatch');
+  });
+
+  it('logs auth-rejection when authorization header is missing', async () => {
+    const { stream, lines } = captureStream();
+    const log = createLogger({ level: 'warn' }, stream);
+    await request(makeApp('secret', log)).get('/protected');
+
+    const entries = lines().map((l) => JSON.parse(l));
+    const rejection = entries.find((e) => e.msg === 'auth-rejection');
+    expect(rejection).toBeDefined();
+    expect(rejection.reason).toBe('missing-or-malformed-authorization');
   });
 });

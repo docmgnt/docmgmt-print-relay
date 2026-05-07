@@ -56,4 +56,16 @@ describe('loadConfig', () => {
     process.env.LOG_LEVEL = 'shouty';
     expect(() => loadConfig()).toThrow(ConfigError);
   });
+
+  it('rejects malformed CIDR in ALLOWED_PRINTER_CIDRS', () => {
+    process.env.API_KEY = 'k';
+    process.env.ALLOWED_PRINTER_CIDRS = '10.0.0.0/8,not-a-cidr';
+    expect(() => loadConfig()).toThrow(/invalid CIDR/);
+  });
+
+  it('rejects empty ALLOWED_PRINTER_CIDRS', () => {
+    process.env.API_KEY = 'k';
+    process.env.ALLOWED_PRINTER_CIDRS = '';
+    expect(() => loadConfig()).toThrow(/at least one CIDR/);
+  });
 });

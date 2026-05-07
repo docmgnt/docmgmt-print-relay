@@ -30,6 +30,10 @@ function parseCidr(cidr: string): ParsedCidr | null {
   return { base: base & mask, mask, prefix };
 }
 
+export function isValidCidr(cidr: string): boolean {
+  return parseCidr(cidr) !== null;
+}
+
 function isMulticast(ipInt: number): boolean {
   return (ipInt & 0xf0000000) === 0xe0000000;
 }
