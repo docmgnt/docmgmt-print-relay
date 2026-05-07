@@ -1,0 +1,22 @@
+{
+  "name": "@docmgmt-ai/print-relay",
+  "version": "0.0.0",
+  "description": "On-prem print relay for docmgmt-ai over Cloudflare Tunnel",
+  "private": true,
+  "main": "dist/index.js",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "license": "MIT"
+}
