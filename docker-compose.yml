@@ -1,0 +1,21 @@
+services:
+  relay:
+    image: ghcr.io/docmgnt/docmgmt-print-relay:latest
+    restart: unless-stopped
+    env_file: .env
+    networks:
+      - internal
+    # No ports published to host — only cloudflared can reach the relay
+    # via Docker's internal network.
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${TUNNEL_TOKEN}
+    depends_on:
+      - relay
+    networks:
+      - internal
+
+networks:
+  internal:
