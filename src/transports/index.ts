@@ -6,7 +6,6 @@ export interface PrintJob {
   port: number;
   data: Buffer;
   copies: number;
-  printerUrl?: string;
 }
 
 export type ErrorCode =
