@@ -10,6 +10,12 @@ export interface PrintRouterOptions {
   getTransport: (protocol: Protocol) => Transport;
 }
 
+// Phase 5 (server.ts) MUST configure express.json with this body limit so
+// label/PDF jobs aren't truncated. Default express limit is 100kb, far too
+// small for IPP PDFs. Cloudflared's default body limit is much larger,
+// so this is the binding constraint.
+export const PRINT_BODY_SIZE_LIMIT = '20mb';
+
 export function createPrintRouter(opts: PrintRouterOptions): Router {
   const router = Router();
 

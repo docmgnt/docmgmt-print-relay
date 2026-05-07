@@ -93,4 +93,16 @@ describe('status route', () => {
 
     expect(res.status).toBe(400);
   });
+
+  it('returns offline/unknown when ippGetState throws', async () => {
+    const log = createLogger({ level: 'fatal' });
+    const ippGetState = vi.fn().mockRejectedValue(new Error('parse failed'));
+    const app = express().use(
+      createStatusRouter({ logger: log, allowedCidrs: ALLOWED, ippGetState }),
+    );
+    const res = await request(app).get('/api/printers/192.168.1.50/status?protocol=ipp&port=631');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ online: false, status: 'unknown' });
+  });
 });

@@ -15,14 +15,14 @@ describe('PrintRequestBodySchema', () => {
     expect(PrintRequestBodySchema.safeParse(valid).success).toBe(true);
   });
 
-  it('accepts an IPP request with printerUrl', () => {
+  it('accepts an IPP request with base64 encoding', () => {
     expect(
       PrintRequestBodySchema.safeParse({
         ...valid,
         protocol: 'ipp',
         port: 631,
         encoding: 'base64',
-        printerUrl: 'ipp://192.168.1.50:631/ipp/print',
+        data: 'JVBERi0xLjQ=', // valid base64 (\"%PDF-1.4\")
       }).success,
     ).toBe(true);
   });
@@ -47,6 +47,31 @@ describe('PrintRequestBodySchema', () => {
 
   it('rejects unknown encoding', () => {
     expect(PrintRequestBodySchema.safeParse({ ...valid, encoding: 'utf-16' }).success).toBe(false);
+  });
+
+  it('rejects invalid base64 data', () => {
+    expect(
+      PrintRequestBodySchema.safeParse({ ...valid, data: 'not!base64', encoding: 'base64' }).success,
+    ).toBe(false);
+  });
+
+  it('rejects base64 with wrong padding length', () => {
+    // 'XlhBXlha' is 8 chars (valid), but 'XlhBXlh' is 7 chars (invalid)
+    expect(
+      PrintRequestBodySchema.safeParse({ ...valid, data: 'XlhBXlh', encoding: 'base64' }).success,
+    ).toBe(false);
+  });
+
+  it('accepts well-formed base64 data', () => {
+    expect(
+      PrintRequestBodySchema.safeParse({ ...valid, data: 'XlhBXlha', encoding: 'base64' }).success,
+    ).toBe(true);
+  });
+
+  it('does not enforce base64 alphabet when encoding is utf-8', () => {
+    expect(
+      PrintRequestBodySchema.safeParse({ ...valid, data: '^XA^XZ', encoding: 'utf-8' }).success,
+    ).toBe(true);
   });
 });
 
