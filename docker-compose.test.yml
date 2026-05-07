@@ -1,0 +1,25 @@
+# Integration test scaffold — see test/integration/ipp-cups-pdf.test.ts for status.
+#
+# v1 ships with comprehensive unit tests for the IPP transport that use a real
+# local http server speaking IPP via the same `ipp` library. That covers the
+# protocol round-trip without an external dependency.
+#
+# This compose file stays as a scaffold for future integration tests against
+# a real CUPS-PDF instance. Enable by:
+#   1. Verify the image below pulls cleanly on your CI arch (multi-arch needed)
+#   2. Set RUN_INTEGRATION=1
+#   3. Remove `describe.skip` in test/integration/ipp-cups-pdf.test.ts
+
+services:
+  cups-pdf:
+    image: olbat/cupsd:latest
+    ports:
+      - "10631:631"
+    environment:
+      - CUPSADMIN=admin
+      - CUPSPASSWORD=admin
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:631"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
