@@ -1,6 +1,16 @@
 import ipp from 'ipp';
 import type { ErrorCode, PrintJob, Transport, TransportResult } from './index';
 
+// @types/ipp omits 'Print-Job' from its operation enum; runtime supports it fully.
+// We type the printer with a permissive shape for the ops we use.
+interface IppPrinterLike {
+  execute(
+    operation: string,
+    message: Record<string, unknown>,
+    callback: (err: NodeJS.ErrnoException | null, res: { 'status-code'?: string } | undefined) => void,
+  ): void;
+}
+
 export interface IppOptions {
   timeoutMs: number;
 }
@@ -27,7 +37,7 @@ export function createIppTransport(opts: IppOptions): Transport {
   return {
     async send(job: PrintJob): Promise<TransportResult> {
       const url = buildPrinterUrl(job);
-      const printer = new ipp.Printer(url);
+      const printer = new ipp.Printer(url) as unknown as IppPrinterLike;
 
       const message: Record<string, unknown> = {
         'operation-attributes-tag': {
@@ -48,10 +58,7 @@ export function createIppTransport(opts: IppOptions): Transport {
           });
         }, opts.timeoutMs);
 
-        printer.execute(
-          'Print-Job',
-          message,
-          (err: NodeJS.ErrnoException | null, res: { 'status-code'?: string } | undefined) => {
+        printer.execute('Print-Job', message, (err, res) => {
             clearTimeout(timer);
             if (err) {
               resolve({
