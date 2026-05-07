@@ -5,8 +5,11 @@ services:
     env_file: .env
     networks:
       - internal
-    # No ports published to host — only cloudflared can reach the relay
-    # via Docker's internal network.
+    # IMPORTANT: do not publish a `ports:` mapping here. The relay's only
+    # production defenses are the cloudflared tunnel + the API_KEY bearer
+    # check. Publishing the port exposes the relay directly to the LAN
+    # without those protections. Cloudflared reaches the relay via Docker's
+    # internal network on the hostname `relay`.
 
   cloudflared:
     image: cloudflare/cloudflared:latest

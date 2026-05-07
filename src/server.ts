@@ -77,6 +77,9 @@ export function buildServer(cfg: ServerConfig): Express {
   // Catch-all error handler — honors express conventions (err.status/err.statusCode
   // for known errors like PayloadTooLargeError=413), falls back to 500 for genuine
   // exceptions. Returns a generic body; never leaks stack content.
+  // errorCode is reserved for printer-protocol failures (the Transport taxonomy);
+  // we don't emit it on caller-side 4xx errors to avoid misleading the bridge's
+  // retry logic.
   app.use(
     (
       err: Error & { status?: number; statusCode?: number },
@@ -90,11 +93,12 @@ export function buildServer(cfg: ServerConfig): Express {
       } else {
         logger.warn({ err: err.message, status }, 'request-error');
       }
-      res.status(status).json({
+      const body: Record<string, unknown> = {
         success: false,
-        error: status === 413 ? 'payload too large' : 'internal error',
-        errorCode: 'PROTOCOL_ERROR',
-      });
+        error: status === 413 ? 'payload too large' : status === 400 ? 'bad request' : 'internal error',
+      };
+      if (status >= 500) body.errorCode = 'PROTOCOL_ERROR';
+      res.status(status).json(body);
     },
   );
 

@@ -20,6 +20,19 @@ function main(): void {
   }
 
   const logger = createLogger({ level: cfg.logLevel });
+
+  // Capture rare top-level failures through the structured logger so they don't
+  // appear as raw stack traces in `docker logs`. Restart will be handled by
+  // `restart: unless-stopped` in docker-compose.
+  process.on('uncaughtException', (err: Error) => {
+    logger.fatal({ err: err.message, stack: err.stack }, 'uncaught-exception');
+    process.exit(1);
+  });
+  process.on('unhandledRejection', (reason: unknown) => {
+    logger.fatal({ reason: String(reason) }, 'unhandled-rejection');
+    process.exit(1);
+  });
+
   const app = buildServer({ ...cfg, version: pkg.version, logger });
 
   app.listen(cfg.port, () => {
