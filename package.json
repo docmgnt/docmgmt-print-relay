@@ -1,6 +1,6 @@
 {
   "name": "@docmgmt-ai/print-relay",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "On-prem print relay for docmgmt-ai over Cloudflare Tunnel",
   "private": true,
   "main": "dist/index.js",
